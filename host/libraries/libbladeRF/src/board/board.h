@@ -492,4 +492,7 @@ struct bladerf_flash_arch {
 extern const struct board_fns *bladerf_boards[];
 extern const unsigned int bladerf_boards_len;
 
+/* fft config */
+extern unsigned int samples_per_ts_configurable;
+
 #endif
