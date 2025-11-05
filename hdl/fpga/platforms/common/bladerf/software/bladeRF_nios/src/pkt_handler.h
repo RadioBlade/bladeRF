@@ -35,6 +35,8 @@
 #define PKT_MAGIC_IDX 0
 #define PKT_CFG_IDX   1
 
+extern uint64_t scan_period;
+
 struct pkt_buf {
     const uint8_t req[NIOS_PKT_LEN];      /* Request */
     uint8_t       resp[NIOS_PKT_LEN];     /* Response */

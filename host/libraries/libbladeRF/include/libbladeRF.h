@@ -2551,6 +2551,46 @@ struct bladerf_metadata {
 
 /** @} (End of STREAMING_FORMAT_METADATA) */
 
+typedef struct frequency_sweep{
+    int start_sweep;
+    int stop_sweep;
+    int step_count;
+    int intersection;
+    bladerf_timestamp step_duration;
+    struct bladerf_quick_tune* quick_tunes;
+} frequency_sweep;
+
+typedef struct sweep_metadata{
+    bladerf_direction dir;
+    frequency_sweep* sweep;
+    int sweep_count;
+    int quick_tune_count;
+    bladerf_timestamp sweep_start_time;
+    bladerf_timestamp sweep_period;
+    bladerf_timestamp next_timestamp;
+    int current_iter;
+    int current_sweep;
+    int current_step;
+} sweep_metadata;
+
+/**
+ * bladerf_set_scan, to be documented
+ *
+ */
+API_EXPORT
+int CALL_CONV bladerf_set_scan(struct bladerf* dev,
+                                      bladerf_channel ch,
+                               struct bladerf_metadata* meta,
+                                      sweep_metadata* sweep_meta);
+
+API_EXPORT
+int CALL_CONV get_current_scan_index(struct bladerf *dev, sweep_metadata* sweep_meta);
+
+API_EXPORT
+void CALL_CONV get_next_scan_timestamp(struct bladerf *dev, sweep_metadata* sweep_meta);
+
+
+
 /**
  * Interleaves contiguous blocks of samples in preparation for MIMO TX.
  *
@@ -2701,6 +2741,14 @@ API_EXPORT
 int CALL_CONV bladerf_get_timestamp(struct bladerf *dev,
                                     bladerf_direction dir,
                                     bladerf_timestamp *timestamp);
+
+
+/* Schedule tuning
+ */
+API_EXPORT
+int CALL_CONV bladerf_set_scan_period(struct bladerf *dev,
+                          bladerf_channel ch,
+                          bladerf_timestamp timestamp);
 
 /**
  * @defgroup FN_STREAMING_SYNC  Synchronous API

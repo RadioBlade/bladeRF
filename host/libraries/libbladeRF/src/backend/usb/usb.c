@@ -1252,6 +1252,7 @@ const struct backend_fns backend_fns_usb_legacy = {
     FIELD_INIT(.set_agc_dc_correction, set_agc_dc_correction_unsupported),
 
     FIELD_INIT(.get_timestamp, nios_legacy_get_timestamp),
+    FIELD_INIT(.set_scan_period, nios_legacy_set_scan_period),
 
     FIELD_INIT(.si5338_write, nios_legacy_si5338_write),
     FIELD_INIT(.si5338_read, nios_legacy_si5338_read),
@@ -1365,6 +1366,7 @@ const struct backend_fns backend_fns_usb = {
     FIELD_INIT(.set_agc_dc_correction, nios_set_agc_dc_correction),
 
     FIELD_INIT(.get_timestamp, nios_get_timestamp),
+    FIELD_INIT(.set_scan_period, nios_set_scan_period),
 
     FIELD_INIT(.si5338_write, nios_si5338_write),
     FIELD_INIT(.si5338_read, nios_si5338_read),

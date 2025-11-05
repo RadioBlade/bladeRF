@@ -401,6 +401,9 @@ struct board_fns {
     int (*get_timestamp)(struct bladerf *dev,
                          bladerf_direction dir,
                          bladerf_timestamp *timestamp);
+    int (*set_scan_period)(struct bladerf *dev,
+                         bladerf_channel ch,
+                         bladerf_timestamp timestamp);
 
     /* FPGA/Firmware Loading/Flashing */
     int (*load_fpga)(struct bladerf *dev, const uint8_t *buf, size_t length);

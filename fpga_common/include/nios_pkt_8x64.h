@@ -102,6 +102,7 @@
 /* Target IDs */
 
 #define NIOS_PKT_8x64_TARGET_TIMESTAMP 0x00 /* Timestamp readback (read only) */
+#define NIOS_PKT_8x64_TARGET_SCAN_PERIOD 0x01 /* TIME DURATION FOR SCAN ON PORT [ch] (ch given in addr)*/
 
 /* IDs 0x80 through 0xff will not be assigned by Nuand. These are reserved
  * for user customizations */

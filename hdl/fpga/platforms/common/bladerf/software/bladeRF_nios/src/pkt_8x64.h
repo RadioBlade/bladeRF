@@ -28,11 +28,12 @@
 #include "pkt_handler.h"
 #include "nios_pkt_8x64.h"
 
+void pkt_8x64_init(void);
 void pkt_8x64(struct pkt_buf *b);
 
 #define PKT_8x64 { \
     .magic          = NIOS_PKT_8x64_MAGIC, \
-    .init           = NULL, \
+    .init           = pkt_8x64_init, \
     .exec           = pkt_8x64, \
     .do_work        = NULL, \
 }

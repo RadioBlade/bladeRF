@@ -494,6 +494,46 @@ int nios_get_fpga_version(struct bladerf *dev, struct bladerf_version *ver)
     return status;
 }
 
+/*******************************************************/
+/* Scheduled Tuning */ 
+/*******************************************************/
+
+int nios_set_scan_period(struct bladerf *dev,
+                       bladerf_channel ch,
+                       uint64_t period)
+{
+    int status;
+    uint8_t buf[16];
+    uint8_t addr;
+    bool success;
+    uint64_t test;
+
+    if(ch<4){
+        addr = ch; //every channel will have its own period
+    } else{
+        log_debug("Invalid direction: %d\n", ch);
+        return BLADERF_ERR_INVAL;
+    }
+
+    nios_pkt_8x64_pack(buf, NIOS_PKT_8x64_TARGET_SCAN_PERIOD, true, addr, period);
+
+    status = nios_access(dev, buf);
+    if (status != 0) {
+        return status;
+    }
+
+    nios_pkt_8x64_resp_unpack(buf, NULL, NULL, NULL, &test, &success);
+
+    if (success) {
+        log_verbose("%s: Set %d period to: %" PRIu64 "\n", __FUNCTION__,
+                    ch, period);
+        return 0;
+    } else {
+        log_debug("%s: response packet reported failure.\n", __FUNCTION__);
+        return BLADERF_ERR_FPGA_OP;
+    }
+}
+
 int nios_get_timestamp(struct bladerf *dev,
                        bladerf_direction dir,
                        uint64_t *timestamp)

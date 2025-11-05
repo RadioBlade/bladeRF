@@ -315,6 +315,10 @@ static inline void perform_work(struct queue *q, bladerf_module module)
             /* Drop the item from the queue */
             dequeue_retune(q, NULL);
 
+            if(scan_period!=0){
+                enqueue_retune(q, e->profile, e->timestamp+scan_period);
+                profile_load_scheduled(q, module);
+            }
             break;
 
         default:

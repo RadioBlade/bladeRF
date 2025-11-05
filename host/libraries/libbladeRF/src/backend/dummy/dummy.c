@@ -229,6 +229,13 @@ static int dummy_get_timestamp(struct bladerf *dev,
     return 0;
 }
 
+static int dummy_set_scan_period(struct bladerf *dev,
+                               bladerf_channel ch,
+                               uint64_t val)
+{
+    return 0;
+}
+
 static int dummy_si5338_read(struct bladerf *dev, uint8_t addr, uint8_t *data)
 {
     return 0;
@@ -494,6 +501,7 @@ const struct backend_fns backend_fns_dummy = {
     FIELD_INIT(.get_iq_gain_correction, dummy_get_iq_gain_correction),
     FIELD_INIT(.get_iq_phase_correction, dummy_get_iq_phase_correction),
 
+    FIELD_INIT(.set_scan_period, dummy_set_scan_period),
     FIELD_INIT(.get_timestamp, dummy_get_timestamp),
 
     FIELD_INIT(.si5338_write, dummy_si5338_write),

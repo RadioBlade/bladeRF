@@ -28,12 +28,20 @@
 #include "devices.h"
 #include "debug.h"
 
+uint64_t scan_period;
+
 static inline bool perform_write(uint8_t id, uint8_t addr, uint64_t data)
 {
     switch (id) {
         case NIOS_PKT_8x64_TARGET_TIMESTAMP:
             DBG("Invalid write access to timestamp: 0x%x\n", addr);
             return false;
+
+        case NIOS_PKT_8x64_TARGET_SCAN_PERIOD:
+            //TODO: address will give rx/tx
+            scan_period = data;
+            DBG("set addr:%hhu scan_period=%lu\n", addr, data);
+            return true;
 
         /* Add user customizations here
 
@@ -93,6 +101,12 @@ static inline bool perform_read(uint8_t id, uint8_t addr, uint64_t *data)
 
     return success;
 }
+
+void pkt_8x64_init(void){
+    //reset queues
+    scan_period=0;
+}
+
 
 void pkt_8x64(struct pkt_buf *b)
 {

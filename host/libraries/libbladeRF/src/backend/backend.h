@@ -179,6 +179,10 @@ struct backend_fns {
     int (*get_timestamp)(struct bladerf *dev,
                          bladerf_direction dir,
                          uint64_t *value);
+    /* Set scan period */
+    int (*set_scan_period)(struct bladerf *dev,
+                         bladerf_channel ch,
+                         uint64_t value);
 
     /* Si5338 accessors */
     int (*si5338_write)(struct bladerf *dev, uint8_t addr, uint8_t data);

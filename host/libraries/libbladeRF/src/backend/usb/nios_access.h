@@ -83,6 +83,9 @@ int nios_get_timestamp(struct bladerf *dev,
                        bladerf_direction dir,
                        uint64_t *timestamp);
 
+int nios_set_scan_period(struct bladerf *dev,
+                       bladerf_channel ch,
+                       uint64_t timestamp);
 /**
  * Read from an Si5338 register
  *

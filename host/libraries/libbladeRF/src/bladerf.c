@@ -1075,6 +1075,158 @@ int bladerf_cancel_scheduled_retunes(struct bladerf *dev, bladerf_channel ch)
     return status;
 }
 
+int bladerf_set_scan(struct bladerf* dev,
+                            bladerf_channel ch,
+                     struct bladerf_metadata* meta,
+                            sweep_metadata* sweep_meta){
+    int status=0;
+    int i, j;
+    bladerf_frequency current_frequency;
+    bladerf_frequency frequency_step;
+    // bladerf_frequency current_timestamp;
+
+    sweep_meta->quick_tune_count=0;
+    sweep_meta->sweep_period=0;
+    for(j=0;j<sweep_meta->sweep_count;j++){
+        sweep_meta->quick_tune_count += sweep_meta->sweep[j].step_count;
+        sweep_meta->sweep_period += sweep_meta->sweep[j].step_count*sweep_meta->sweep[j].step_duration;
+    }
+
+    if(sweep_meta->quick_tune_count>2048){ // TODO: find define
+        printf("cannot set quick tune more than 2048 (currently %d)\n", sweep_meta->quick_tune_count);
+        return -1;
+    }
+
+    for(i=0;i<sweep_meta->sweep_count;i++){
+        // printf("i:%d %d\n",i,sweep_meta->sweep_count);
+        frequency_step = (sweep_meta->sweep[i].stop_sweep-sweep_meta->sweep[i].start_sweep)/sweep_meta->sweep[i].step_count;
+        current_frequency=sweep_meta->sweep[i].start_sweep;
+        sweep_meta->sweep[i].quick_tunes = (struct bladerf_quick_tune*) malloc(sizeof(struct bladerf_quick_tune)*sweep_meta->sweep[i].step_count);
+        if(sweep_meta->sweep[i].quick_tunes==NULL){
+            printf("could not allocate memory for sweep %d (%ld bytes)", i, sizeof(struct bladerf_quick_tune)*sweep_meta->sweep[i].step_count);
+            return -1;
+        }
+        /* Get the quick tune data */
+        for( j=0; j<sweep_meta->sweep[i].step_count; j++){
+            // printf("freq:%ld, ", current_frequency);
+            status = bladerf_set_frequency(dev, ch, current_frequency);
+            if(status!=0){
+                fprintf(stderr, "Failed to set frequency to %" PRIu64 ": %s\n",
+                        current_frequency, bladerf_strerror(status));
+                return status;
+            }
+
+            status = bladerf_get_quick_tune(dev, ch, &sweep_meta->sweep[i].quick_tunes[j]);
+            if(status!=0){
+                fprintf(stderr, "Failed to get quick tune %" PRIu64 ": %s\n",
+                        current_frequency, bladerf_strerror(status));
+                return status;
+            }
+            current_frequency+=frequency_step;
+        }
+        // printf("\n");
+    }
+
+    // printf("sweep_period:%ld\n", sweep_meta->sweep_period);
+    status = bladerf_set_scan_period(dev, ch, sweep_meta->sweep_period);
+    if(status!=0){
+        fprintf(stderr, "Failed to set period %ld: %s\n",
+                sweep_meta->sweep_period, bladerf_strerror(status));
+        return status;
+    }
+    
+    status = bladerf_get_timestamp(dev, BLADERF_CHANNEL_IS_TX(ch), &sweep_meta->sweep_start_time);
+    if(status!=0){
+        fprintf(stderr, "Failed to get timestamp %s\n",
+                bladerf_strerror(status));
+        return status;
+    }
+
+    meta->timestamp = sweep_meta->sweep_start_time + sweep_meta->sweep[0].step_duration; //TODO: Should assign a valid and smallest possible delay
+    for( i=0; i<sweep_meta->sweep_count; i++){
+        for( j=0; j<sweep_meta->sweep[i].step_count; j++){
+            status = bladerf_schedule_retune(dev, ch, meta->timestamp+i*sweep_meta->sweep_period, 0, &sweep_meta->sweep[i].quick_tunes[j]);
+            // printf("%d. setting retune to %ld (%ld)\n", i, meta->timestamp, meta->timestamp/1000000);
+            if (status != 0) {
+                fprintf(stderr, "Failed to apply quick tune: %s\n",
+                        bladerf_strerror(status));
+                return status;
+            }
+            meta->timestamp += sweep_meta->sweep[i].step_duration;
+        }
+    }
+
+    status = get_current_scan_index(dev, sweep_meta);
+    if(status!=0){
+        fprintf(stderr, "Failed to get scan index %s\n",
+                bladerf_strerror(status));
+        return status;
+    }
+
+    meta->timestamp=sweep_meta->next_timestamp;
+
+    return status;
+}
+
+int get_current_scan_index(struct bladerf *dev, sweep_metadata* sweep_meta){
+    int status;
+    bladerf_timestamp current_timestamp;
+    bladerf_timestamp calc_timestamp;
+    int current_sweep;
+    int i;
+
+    status = bladerf_get_timestamp(dev, sweep_meta->dir, &current_timestamp);
+    if(status!=0){
+        fprintf(stderr, "Failed to get timestamp %s\n",
+                bladerf_strerror(status));
+        return status;
+    }
+
+    calc_timestamp = current_timestamp - sweep_meta->sweep_start_time;
+    sweep_meta->current_iter = calc_timestamp/sweep_meta->sweep_period;
+    calc_timestamp = calc_timestamp%sweep_meta->sweep_period;
+
+    for(current_sweep=0; current_sweep < sweep_meta->sweep_count; current_sweep++){
+        if(calc_timestamp < sweep_meta->sweep[current_sweep].step_count * sweep_meta->sweep[current_sweep].step_duration){
+            sweep_meta->current_step = calc_timestamp/sweep_meta->sweep[current_sweep].step_duration;
+            break;
+        } else{
+            calc_timestamp -= sweep_meta->sweep[current_sweep].step_count * sweep_meta->sweep[current_sweep].step_duration;
+        }
+    }
+    sweep_meta->current_sweep = current_sweep;
+    sweep_meta->next_timestamp = sweep_meta->sweep_start_time + (sweep_meta->sweep_period*sweep_meta->current_iter);
+    for(i=0;i<current_sweep-1;i++){
+        sweep_meta->next_timestamp += sweep_meta->sweep[i].step_count*sweep_meta->sweep[i].step_duration;
+    }
+    sweep_meta->next_timestamp += (sweep_meta->current_step+1)*sweep_meta->sweep[i].step_duration;
+
+
+    return 0;
+}
+
+void get_next_scan_timestamp(struct bladerf *dev, sweep_metadata* sweep_meta){
+    sweep_meta->next_timestamp += sweep_meta->sweep[sweep_meta->current_sweep].step_duration;
+    if(sweep_meta->current_step != sweep_meta->sweep[sweep_meta->current_sweep].step_count-1){
+        sweep_meta->current_step+=1;
+    } else{
+        sweep_meta->current_step=0;
+        if(sweep_meta->current_sweep != sweep_meta->sweep_count-1){
+            sweep_meta->current_sweep+=1;
+        } else {
+            sweep_meta->current_sweep=0;
+            sweep_meta->current_iter+=1;
+        }
+    }
+    // printf("next_timestamp:%ld (+%ld/%ld), current_iter:%d, current_sweep:%d (%d), current_step:%d (%d)\n", sweep_meta->next_timestamp,
+    //                                                                                                 sweep_meta->sweep[sweep_meta->current_sweep].step_duration,
+    //                                                                                                 sweep_meta->sweep_period,
+    //                                                                                                 sweep_meta->current_iter,
+    //                                                                                                 sweep_meta->current_sweep,
+    //                                                                                                 sweep_meta->sweep_count,
+    //                                                                                                 sweep_meta->current_step,
+    //                                                                                                 sweep_meta->sweep[sweep_meta->current_sweep].step_count);
+}
 /******************************************************************************/
 /* DC/Phase/Gain Correction */
 /******************************************************************************/
@@ -1321,6 +1473,20 @@ int bladerf_sync_rx(struct bladerf *dev,
 {
     return dev->board->sync_rx(dev, samples, num_samples, metadata, timeout_ms);
 }
+
+int bladerf_set_scan_period(struct bladerf *dev,
+                          bladerf_channel dir,
+                          bladerf_timestamp timestamp)
+{
+    int status;
+    MUTEX_LOCK(&dev->lock);
+
+    status = dev->board->set_scan_period(dev, dir, timestamp);
+
+    MUTEX_UNLOCK(&dev->lock);
+    return status;
+}
+
 
 int bladerf_get_timestamp(struct bladerf *dev,
                           bladerf_direction dir,

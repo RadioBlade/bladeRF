@@ -68,6 +68,10 @@ static uint64_t get_timestamp()
     __time64_t now = _time64(NULL);
     return (uint64_t)now;
 }
+static uint64_t set_scan_period()
+{
+    return 0;
+}
 #else
 #include <sys/time.h>
 static inline uint64_t get_timestamp()
@@ -83,6 +87,10 @@ static inline uint64_t get_timestamp()
     }
 
     return ret;
+}
+static inline uint64_t set_scan_period()
+{
+    return 0;
 }
 #endif
 

@@ -241,6 +241,14 @@ int nios_legacy_get_fpga_version(struct bladerf *dev,
     return status;
 }
 
+
+int nios_legacy_set_scan_period(struct bladerf *dev, bladerf_channel ch,
+                              uint64_t value)
+{
+    
+    return 0;
+}
+
 int nios_legacy_get_timestamp(struct bladerf *dev, bladerf_direction dir,
                               uint64_t *value)
 {

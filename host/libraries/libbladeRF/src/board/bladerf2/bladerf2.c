@@ -2247,6 +2247,13 @@ static int bladerf2_get_timestamp(struct bladerf *dev,
     return dev->backend->get_timestamp(dev, dir, value);
 }
 
+static int bladerf2_set_scan_period(struct bladerf *dev,
+                                  bladerf_channel ch,
+                                  bladerf_timestamp value)
+{
+
+    return dev->backend->set_scan_period(dev, ch, value);
+}
 
 /******************************************************************************/
 /* FPGA/Firmware Loading/Flashing */
@@ -2954,6 +2961,7 @@ struct board_fns const bladerf2_board_fns = {
     FIELD_INIT(.sync_tx, bladerf2_sync_tx),
     FIELD_INIT(.sync_rx, bladerf2_sync_rx),
     FIELD_INIT(.get_timestamp, bladerf2_get_timestamp),
+    FIELD_INIT(.set_scan_period, bladerf2_set_scan_period),
     FIELD_INIT(.load_fpga, bladerf2_load_fpga),
     FIELD_INIT(.flash_fpga, bladerf2_flash_fpga),
     FIELD_INIT(.erase_stored_fpga, bladerf2_erase_stored_fpga),
