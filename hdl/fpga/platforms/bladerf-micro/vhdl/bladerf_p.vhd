@@ -158,7 +158,11 @@ package bladerf_p is
         wbm_wb_sel_o                    :   out std_logic;
         wbm_wb_stb_o                    :   out std_logic;
         wbm_wb_ack_i                    :   in  std_logic                     := 'X';
-        wbm_wb_cyc_o                    :   out std_logic
+        wbm_wb_cyc_o                    :   out std_logic;
+		  fft_cfg_we_out 			:   out  std_logic;
+	fft_config_data		: out  std_logic_vector(31 downto 0) ;
+	timestamp_enable : in std_logic;
+	time_tick : out std_logic
       );
     end component;
 
@@ -170,7 +174,7 @@ package bladerf_p is
     constant TX_FIFO_RWIDTH         : natural := 64;    -- read side data width
     constant TX_FIFO_LENGTH         : natural := 8192;  -- samples
 
-    constant RX_FIFO_WWIDTH         : natural := 64;    -- write side data width
+    constant RX_FIFO_WWIDTH         : natural := 128;    -- write side data width
     constant RX_FIFO_RWIDTH         : natural := 32;    -- read side data width
     constant RX_FIFO_LENGTH         : natural := 8192;  -- samples
 

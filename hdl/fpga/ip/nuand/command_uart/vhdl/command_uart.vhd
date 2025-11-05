@@ -40,7 +40,9 @@ entity command_uart is
     write           :   in  std_logic ;
     waitreq         :   out std_logic ;
     readack         :   out std_logic ;
-    irq             :   out std_logic
+    irq             :   out std_logic ;
+	 fft_cfg_we_out : out  std_logic;
+	 fft_config_data		  : out  std_logic_vector(31 downto 0) 
   ) ;
 end entity ; -- command_uart
 
@@ -75,6 +77,9 @@ architecture arch of command_uart is
     signal ack : std_logic ;
 
     type magics_t is array(natural range <>) of std_logic_vector(7 downto 0) ;
+	 
+	 signal fft_config : std_logic_vector(31 downto 0);
+	 signal fft_cfg_we : std_logic;
 
     -- These are all the magic header characters
     constant magics : magics_t := (
@@ -96,6 +101,18 @@ architecture arch of command_uart is
     alias isr_enable is control(0) ;
 
 begin
+
+	 fft_config_write : process(clock)
+	 begin
+		if( rising_edge(clock) ) then
+			if( write = '1' ) then
+				if( reg_request(7 downto 0) = "01000100" and reg_request(39 downto 32) = "11111111" and reg_request(15 downto 8) = "11111111") then
+					fft_config <= reg_request(71 downto 40);
+					fft_cfg_we <= '1';
+				end if ;
+			end if ;
+		end if ;
+	 end process;
 
     readack <= ack ;
     waitreq <= not(ack or write) ;
@@ -371,5 +388,8 @@ begin
             end case ;
         end if ;
     end process ;
+	 
+	 fft_config_data <= fft_config;
+	 fft_cfg_we_out <= fft_cfg_we;
 
 end architecture ; -- arch

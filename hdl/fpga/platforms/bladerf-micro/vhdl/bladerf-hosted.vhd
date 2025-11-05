@@ -181,6 +181,11 @@ architecture hosted_bladerf of bladerf is
     signal wbm_wb_stb_o           : std_logic;
     signal wbm_wb_ack_i           : std_logic;
     signal wbm_wb_cyc_o           : std_logic;
+    
+    signal fft_config_data           : std_logic_vector(31 downto 0);
+    signal fft_cfg_we_out_q            : std_logic;
+	 signal timestamp_enable : std_logic;
+	 signal time_tick : std_logic;
 begin
 
     U_rx_pkt_gen : entity work.rx_packet_generator
@@ -464,7 +469,11 @@ begin
             wbm_wb_sel_o                    => wbm_wb_sel_o,
             wbm_wb_stb_o                    => wbm_wb_stb_o,
             wbm_wb_ack_i                    => wbm_wb_ack_i,
-            wbm_wb_cyc_o                    => wbm_wb_cyc_o
+            wbm_wb_cyc_o                    => wbm_wb_cyc_o,
+            fft_cfg_we_out		    => fft_cfg_we_out_q,
+	    fft_config_data		    => fft_config_data,
+	    timestamp_enable		    => timestamp_enable,
+	    time_tick 			    => time_tick	
         );
 
     -- FX3 UART
@@ -685,7 +694,11 @@ begin
 
             -- RFFE Interface
             adc_controls           => adc_controls,
-            adc_streams            => adc_streams
+            adc_streams            => adc_streams,
+            fft_cfg_we_in	   => fft_cfg_we_out_q,
+	    fft_config_data_in	   => fft_config_data,
+	    timestamp_enable       => timestamp_enable,
+	    time_tick 		   => time_tick
         );
 
     adc_assignment_proc : process( all )

@@ -17,7 +17,7 @@ entity rx_fifo is
         INTENDED_DEVICE_FAMILY  : string  := "Cyclone V";
         LPM_NUMWORDS            : natural := 4096;
         LPM_SHOWAHEAD           : string  := "ON";
-        LPM_WIDTH               : natural := 64;
+        LPM_WIDTH               : natural := 128;
         LPM_WIDTH_R             : natural := 32;
         OVERFLOW_CHECKING       : string  := "ON";
         RDSYNC_DELAYPIPE        : natural := 5;

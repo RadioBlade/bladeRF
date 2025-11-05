@@ -66,7 +66,9 @@ entity fifo_writer is
 
         overflow_led        :   buffer  std_logic;
         overflow_count      :   buffer  unsigned(63 downto 0);
-        overflow_duration   :   in      unsigned(15 downto 0)
+        overflow_duration   :   in      unsigned(15 downto 0);
+		  is_meta_dma_downcount : out std_logic;
+		  fft_config_comb     :   in     std_logic_vector(3 downto 0)
     );
 end entity;
 
@@ -241,6 +243,8 @@ begin
     begin
 
         meta_future            <= meta_current;
+		  
+		   is_meta_dma_downcount <= '0';
 
         meta_future.meta_write <= '0';
         -- currently the GPIF modules overwrites the bottom 16 bits of the flags field
@@ -286,7 +290,7 @@ begin
             when META_WRITE =>
 
                 for i in in_samples'range loop
-                    if (meta_fifo_full = '0' and in_samples(i).data_v = '1') then
+                    if (meta_fifo_full = '0' and in_samples(i).data_v = '1' and in_sample_controls(i).enable = '1') then
                         meta_future.meta_write <= '1';
                         meta_future.meta_written <= '1';
                         meta_future.state <= META_DOWNCOUNT;
@@ -295,8 +299,13 @@ begin
 
             when META_DOWNCOUNT =>
 
+                is_meta_dma_downcount <= '1';
                 if( fifo_current.fifo_write = '1' and meta_current.meta_write = '0' ) then
-                    meta_future.dma_downcount <= meta_current.dma_downcount - NUM_STREAMS;
+						  if(fft_config_comb = "0111" or fft_config_comb = "1010") then
+								meta_future.dma_downcount <= meta_current.dma_downcount - NUM_STREAMS - NUM_STREAMS;
+						  else
+						      meta_future.dma_downcount <= meta_current.dma_downcount - NUM_STREAMS;
+						  end if;
                 end if;
 
                 if( meta_current.dma_downcount <= 2 ) then
@@ -313,13 +322,16 @@ begin
                 end if;
 
                 -- Patches the late meta write for MIMO mode
-                if( in_sample_controls'length = 2 and
+                if( ((in_sample_controls'length = 2 and
                     in_sample_controls(0).enable = '1' and
                     in_sample_controls(1).enable = '1' and
-                    eight_bit_mode_en = '0' and
+                    eight_bit_mode_en = '0') or fft_config_comb = "0000" or fft_config_comb = "0001" or 
+						  fft_config_comb = "0110" or fft_config_comb = "1000" or fft_config_comb = "1001") and
                     meta_current.dma_downcount <= NUM_STREAMS + 2 )
                 then
                     meta_future.state <= IDLE;
+					 elsif ((fft_config_comb = "0111" or fft_config_comb = "1010") and meta_current.dma_downcount <= NUM_STREAMS + 14) then
+						  meta_future.state <= IDLE;
                 end if;
 
             when PACKET_WAIT_EOP =>
