@@ -211,6 +211,7 @@ int sync_rx_meta_sched_example(struct bladerf *dev,
 
     /* Schedule first RX to be 150 ms in the future */
     meta.timestamp += ts_inc_150ms;
+    printf("Target RX timestamp: 0x%016" PRIx64 "\n", meta.timestamp);
 
     /* Receive samples and do work on them */
     for (i = 0; i < rx_count && status == 0; i++) {
@@ -252,6 +253,9 @@ static struct option const long_options[] = {
     { "numsamples", required_argument, NULL, 'n' },
     { "rxcount", required_argument, NULL, 'c' },
     { "verbosity", required_argument, 0, 'v' },
+    { "c1",     required_argument, 0,  'a' },
+    { "c2",     required_argument, 0,  's' },
+    { "format",   required_argument, 0,  'f' },
     { "help", no_argument, NULL, 'h' },
     { NULL, 0, NULL, 0 },
 };
@@ -268,6 +272,22 @@ static void usage(const char *argv0)
     printf("  -n, --numsamples          Specify Number of samples\n");
     printf("  -c, --rxcount <int>       Specify RX sync iterations\n");
     printf("  -v, --verbosity <level>   Set test verbosity\n");
+    printf("\n");
+    printf("  -a, --c1 <int>            channel1 fft_length\n");
+    printf("  -s, --c2 <int>            channel2 fft_length\n");
+    printf("  -f, --format <int>        receiving format:\n");
+    printf("\t0 : fft(c1), c1\n");
+    printf("\t1 : fft(c2), c2\n");
+    printf("\t2 : c1\n");
+    printf("\t3 : c2\n");
+    printf("\t4 : fft(c1)\n");
+    printf("\t5 : fft(c2)\n");
+    printf("\t6 : c1, c2\n");
+    printf("\t7 : fft(c1), fft(c2), c1, c2\n");
+    printf("\t8 : fft(c1), fft(c2)\n");
+    printf("\t9 : fft(c1+c2), fft(c1/c2)\n");
+    printf("\t10: c1, c2, fft(c1+c2), fft(c1/c2)\n");
+    printf("\n");
     printf("  -h, --help                Show this text.\n");
 }
 
@@ -277,13 +297,17 @@ int main(int argc, char *argv[])
     struct bladerf *dev = NULL;
     const char *devstr  = NULL;
     int16_t *samples    = NULL;
-    bladerf_channel_layout channel_layout = BLADERF_RX_X1;
+    bladerf_channel_layout channel_layout = BLADERF_RX_X2   ;
     bladerf_format fmt  = BLADERF_FORMAT_SC16_Q11_META;
 
     unsigned int num_samples = 4096;
     unsigned int rx_count    = 15;
     unsigned int buffer_size = 4096;
     const unsigned int timeout_ms  = 2500;
+
+    int c1 = 2048;
+    int c2 = 2048;
+    int format = channel_layout==BLADERF_RX_X2 ? 6 : 2;
 
     bladerf_log_level lvl = BLADERF_LOG_LEVEL_SILENT;
     bladerf_log_set_verbosity(lvl);
@@ -292,7 +316,7 @@ int main(int argc, char *argv[])
     int opt = 0;
     int opt_ind = 0;
     while (opt != -1) {
-        opt = getopt_long(argc, argv, "d:b:l:mn:c:v:h", long_options, &opt_ind);
+        opt = getopt_long(argc, argv, "a:s:f:d:b:l:mn:c:v:h", long_options, &opt_ind);
 
         switch (opt) {
             case 'd':
@@ -348,6 +372,49 @@ int main(int argc, char *argv[])
                 }
                 break;
 
+            case 'a':
+                c1 = str2int(optarg, 0, 1024, &ok);
+                if (!ok || (c1<0 || 1024<c1)) {
+                    printf("channel 1 fft length not valid: %s\n", optarg);
+                    return -1;
+                }
+                break;
+
+            case 's':
+                c2 = str2int(optarg, 0, 1024, &ok);
+                if (!ok || (c2<0 || 1024<c2)) {
+                    printf("channel 2 fft length not valid: %s\n", optarg);
+                    return -1;
+                }
+                break;
+
+            case 'f':
+                format = str2int(optarg, 0, 10, &ok);
+                if (!ok || (format<0 || 10<format) ) {
+                    printf("format not valid: %s\n", optarg);
+                    return -1;
+                }
+                switch(format){
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                    case 5: 
+                        channel_layout=BLADERF_RX_X1;
+                        break;
+                    case 6:
+                    case 7:
+                    case 8:
+                    case 9: 
+                    case 10: 
+                        channel_layout=BLADERF_RX_X2;
+                        break;
+                    default: 
+                        channel_layout=BLADERF_RX_X2;
+                        break;
+                }
+                break;
             case 'h':
                 usage(argv[0]);
                 return 0;
@@ -356,6 +423,7 @@ int main(int argc, char *argv[])
                 break;
         }
     }
+
 
     dev = example_init(devstr);
     printf("Format: ");
@@ -366,6 +434,11 @@ int main(int argc, char *argv[])
     printf("RX Count: %i\n", rx_count);
     printf("Mimo: %s\n", (channel_layout == BLADERF_RX_X2) ? "Enabled" : "Disabled");
     printf("Buffer Size: %i\n", buffer_size);
+
+    status = bladerf_set_rx_mode(dev, c1, c2, format);
+    if(status!=0){
+        printf("error while setting rx mode %d\n", status);
+    }
 
     if (dev) {
         samples = init(dev, num_samples, fmt, channel_layout, buffer_size);

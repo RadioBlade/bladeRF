@@ -39,6 +39,7 @@
 #include "logger_entry.h"
 #include "logger_id.h"
 
+#include "nios_pkt_formats.h"
 #include "backend/backend.h"
 #include "backend/usb/usb.h"
 #include "board/board.h"
@@ -79,6 +80,7 @@
     } while (0)
 
 
+unsigned int samples_per_ts_configurable;
 /******************************************************************************/
 /* Private Function Declarations */
 /******************************************************************************/
@@ -922,6 +924,79 @@ int bladerf_get_rf_ports(struct bladerf *dev,
     return status;
 }
 
+int bladerf_set_rx_mode(struct bladerf *dev,
+                                   int fft_size_c1,
+                                   int fft_size_c2,
+                                   int combination){
+
+    int status;
+    uint64_t data;
+    uint8_t buf[NIOS_PKT_LEN];
+    struct bladerf_usb *usb;
+
+    /* Prepare the data */
+    
+    data = 0x00000003 | (fft_size_c1<<2) | (fft_size_c2<<13) | (combination<<24);
+
+    nios_pkt_8x64_pack(buf, 0xff, true, 0xff, data);
+    
+    log_debug("Request \n data:%hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx \n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10], buf[11], buf[12], buf[13], buf[14], buf[15]);
+    // for(int k=0;k <16; k++){
+    //     log_debug("%hhx ",buf[k]);
+    // }log_debug("\n");
+
+
+    usb = dev->backend_data;
+
+    /* Send the command */
+    status = usb->fn->bulk_transfer(usb->driver, PERIPHERAL_EP_OUT, buf,
+                                    NIOS_PKT_LEN, PERIPHERAL_TIMEOUT_MS);
+    if (status != 0) {
+        log_error("Failed to send NIOS II request: %s\n",
+                  bladerf_strerror(status));
+        return status;
+    }
+
+    switch(combination){
+        case 2:
+        case 3:
+        case 4:
+        case 5: 
+            samples_per_ts_configurable=1;
+            break;
+        case 0:
+        case 1:
+        case 6:
+        case 8:
+        case 9: 
+            samples_per_ts_configurable=2;
+            break;
+        case 7:
+        case 10: 
+            samples_per_ts_configurable=4;
+            break;
+        default: 
+            samples_per_ts_configurable=1;
+            break;
+    }
+
+    /* Retrieve the request */
+    status = usb->fn->bulk_transfer(usb->driver, PERIPHERAL_EP_IN, buf,
+                                    NIOS_PKT_LEN, PERIPHERAL_TIMEOUT_MS);
+    if (status != 0) {
+        log_error("Failed to receive NIOS II response: %s\n",
+                  bladerf_strerror(status));
+    }
+
+    log_debug("Response \n data:%hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx %hhx \n", buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8], buf[9], buf[10], buf[11], buf[12], buf[13], buf[14], buf[15]);
+    // log_debug("Response \n data:");
+    // for(int k=0;k <16; k++){
+    //     log_debug("%hhx ",buf[k]);
+    // }log_debug("\n");
+
+    return status;
+
+}
 /******************************************************************************/
 /* Scheduled Tuning */
 /******************************************************************************/

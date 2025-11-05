@@ -242,8 +242,8 @@ int sync_init(struct bladerf_sync *sync,
     sync->meta.msg_size = msg_size;
     sync->meta.msg_per_buf = msg_per_buf(msg_size, buffer_size, bytes_per_sample);
     sync->meta.samples_per_msg = samples_per_msg(msg_size, bytes_per_sample);
-    sync->meta.samples_per_ts = (layout == BLADERF_RX_X2 || layout == BLADERF_TX_X2) ? 2:1;
-
+    // sync->meta.samples_per_ts = (layout == BLADERF_RX_X2 || layout == BLADERF_TX_X2) ? 2:2;
+    sync->meta.samples_per_ts = samples_per_ts_configurable;
     log_verbose("%s: Buffer size (in bytes): %u\n",
                 __FUNCTION__, buffer_size * bytes_per_sample);
 
@@ -502,7 +502,12 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
         log_debug("%s: %u samples %% %u channels != 0\n",
                   __FUNCTION__, num_samples, s->meta.samples_per_ts);
         return BLADERF_ERR_INVAL;
+    } else{
+        log_debug("%s: %u samples %% %u samples_per_ts == 0\n",
+                      __FUNCTION__, num_samples, s->meta.samples_per_ts);
     }
+
+
 
     MUTEX_LOCK(&s->lock);
 
@@ -740,6 +745,8 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
 
                         s->meta.curr_timestamp = s->meta.msg_timestamp;
                         s->meta.state = SYNC_META_STATE_SAMPLES;
+                        log_debug("s->meta.msg_timestamp: 0x%016" PRIx64 "\n", s->meta.msg_timestamp);
+    
                         break;
 
                     case SYNC_META_STATE_SAMPLES:

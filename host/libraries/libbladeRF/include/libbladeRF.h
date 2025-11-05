@@ -4161,6 +4161,37 @@ int CALL_CONV bladerf_get_rf_ports(struct bladerf *dev,
 /** @} (End of FN_LOW_LEVEL) */
 
 /**
+ * Sets the configurations for receiving rx.
+ *
+ * Usage:;
+ * fft_size_c1 is channel1 fft_length
+ * fft_size_c2 is channel2 fft_length
+ * combination is combination. Each combination is as follows:
+ *  0 : fft(c1), c1
+ *  1 : fft(c2), c1
+ *  2 : c1
+ *  3 : c2
+ *  4 : fft(c1)
+ *  5 : fft(c2)
+ *  6 : c1, c2
+ *  7 : fft(c1), fft(c2), c1, c2
+ *  8 : fft(c1), fft(c2)
+ *  9 : fft(c1+c2), fft(c1/c2)
+ *  10: c1, c2, fft(c1+c2), fft(c1/c2)
+ *
+ * @param       dev         Device handle
+ * @param[in]   fft_size_c1 channel1 fft_length
+ * @param[in]   fft_size_c2 channel2 fft_length
+ * @param[in]   combination combination
+ */
+API_EXPORT
+int CALL_CONV bladerf_set_rx_mode(struct bladerf *dev,
+                                   int fft_size_c1,
+                                   int fft_size_c2,
+                                   int combination);
+
+
+/**
  * @defgroup    FN_SF Features
  *
  * This group of functions provides the ability to set features available
