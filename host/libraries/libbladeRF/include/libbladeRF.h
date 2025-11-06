@@ -2562,6 +2562,7 @@ typedef struct frequency_sweep{
 
 typedef struct sweep_metadata{
     bladerf_direction dir;
+    int sweep_format;
     frequency_sweep* sweep;
     int sweep_count;
     int quick_tune_count;
