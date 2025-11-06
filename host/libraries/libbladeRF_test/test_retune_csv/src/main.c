@@ -438,6 +438,11 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
             channel_layout=BLADERF_RX_X2;
             break;
     }
+    status = bladerf_set_rx_mode(dev, 1024, 1024, sweep_meta->sweep_format);
+    if(status!=0){
+        printf("error while setting rx mode %d\n", status);
+    }
+    
     status = devcfg_perform_sync_config(dev, channel_layout,
                                         BLADERF_FORMAT_SC16_Q11_META,
                                         &config, true);
@@ -446,10 +451,6 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
         return -1;
     }
 
-    status = bladerf_set_rx_mode(dev, 1024, 1024, sweep_meta->sweep_format);
-    if(status!=0){
-        printf("error while setting rx mode %d\n", status);
-    }
 
     printf("%s %d\n", __FUNCTION__, __LINE__);
     

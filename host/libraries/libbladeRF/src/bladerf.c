@@ -980,6 +980,9 @@ int bladerf_set_rx_mode(struct bladerf *dev,
             break;
     }
 
+    printf("inside bladerf_set_rx_mode %d samples_per_ts_configurable\n",samples_per_ts_configurable);
+    
+
     /* Retrieve the request */
     status = usb->fn->bulk_transfer(usb->driver, PERIPHERAL_EP_IN, buf,
                                     NIOS_PKT_LEN, PERIPHERAL_TIMEOUT_MS);
