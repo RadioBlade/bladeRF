@@ -215,20 +215,26 @@ int get_current_scan_index(struct bladerf *dev, sweep_metadata* sweep_meta){
     calc_timestamp = current_timestamp - sweep_meta->sweep_start_time;
     sweep_meta->current_iter = calc_timestamp/sweep_meta->sweep_period;
     calc_timestamp = calc_timestamp%sweep_meta->sweep_period;
+    printf("%s %d\n", __FUNCTION__, __LINE__);
 
     for(current_sweep=0; current_sweep < sweep_meta->sweep_count; current_sweep++){
+    printf("%s %d\n", __FUNCTION__, __LINE__);
         if(calc_timestamp < sweep_meta->sweep[current_sweep].step_count * sweep_meta->sweep[current_sweep].step_duration){
+    printf("%s %d\n", __FUNCTION__, __LINE__);
             sweep_meta->current_step = calc_timestamp/sweep_meta->sweep[current_sweep].step_duration;
             break;
         } else{
+    printf("%s %d\n", __FUNCTION__, __LINE__);
             calc_timestamp -= sweep_meta->sweep[current_sweep].step_count * sweep_meta->sweep[current_sweep].step_duration;
         }
     }
+    printf("%s %d\n", __FUNCTION__, __LINE__);
     sweep_meta->current_sweep = current_sweep;
     sweep_meta->next_timestamp = sweep_meta->sweep_start_time + (sweep_meta->sweep_period*sweep_meta->current_iter);
     for(i=0;i<current_sweep-1;i++){
         sweep_meta->next_timestamp += sweep_meta->sweep[i].step_count*sweep_meta->sweep[i].step_duration;
     }
+    printf("%s %d\n", __FUNCTION__, __LINE__);
     sweep_meta->next_timestamp += (sweep_meta->current_step+1)*sweep_meta->sweep[i].step_duration;
 
 
@@ -237,13 +243,19 @@ int get_current_scan_index(struct bladerf *dev, sweep_metadata* sweep_meta){
 
 void get_next_scan_timestamp(struct bladerf *dev, sweep_metadata* sweep_meta){
     sweep_meta->next_timestamp += sweep_meta->sweep[sweep_meta->current_sweep].step_duration;
+    printf("%s %d\n", __FUNCTION__, __LINE__);
     if(sweep_meta->current_step != sweep_meta->sweep[sweep_meta->current_sweep].step_count-1){
+    printf("%s %d\n", __FUNCTION__, __LINE__);
         sweep_meta->current_step+=1;
     } else{
+    printf("%s %d\n", __FUNCTION__, __LINE__);
         sweep_meta->current_step=0;
+    printf("%s %d\n", __FUNCTION__, __LINE__);
         if(sweep_meta->current_sweep != sweep_meta->sweep_count-1){
+    printf("%s %d\n", __FUNCTION__, __LINE__);
             sweep_meta->current_sweep+=1;
         } else {
+    printf("%s %d\n", __FUNCTION__, __LINE__);
             sweep_meta->current_sweep=0;
             sweep_meta->current_iter+=1;
         }
@@ -262,7 +274,6 @@ int run_test_retune_sender(struct bladerf *dev, sweep_metadata* sweep_meta)
     int i, j;
 
     memset(&meta, 0, sizeof(meta));
-    memset(&sweep_meta, 0, sizeof(sweep_meta));
 
     sweep_meta->dir = BLADERF_CHANNEL_IS_TX(BLADERF_CHANNEL_TX(0));
 
@@ -398,7 +409,6 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
     bladerf_frequency frequency_step;
     int i, j;
     memset(&meta, 0, sizeof(meta));
-    memset(&sweep_meta, 0, sizeof(sweep_meta));
 
     sweep_meta->dir = BLADERF_CHANNEL_IS_TX(BLADERF_CHANNEL_RX(0));
 
@@ -525,7 +535,7 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
         }
         printf("--------------------------------------tx\n\n");
 
-    printf("%s %d\n", __FUNCTION__, __LINE__);
+        printf("%s %d\n", __FUNCTION__, __LINE__);
         status = bladerf_schedule_retune(dev, BLADERF_CHANNEL_RX(0), meta.timestamp+sweep_meta->sweep_period, 0, &sweep_meta->sweep[sweep_meta->current_sweep].quick_tunes[sweep_meta->current_step]);
         // printf("%d. setting retune to %ld (%ld)\n", i, meta->timestamp, meta->timestamp/1000000);
         if (status != 0) {
@@ -537,7 +547,7 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
         get_next_scan_timestamp(dev, sweep_meta);
         meta.timestamp = sweep_meta->next_timestamp;
 
-    printf("%s %d\n", __FUNCTION__, __LINE__);
+        printf("%s %d\n", __FUNCTION__, __LINE__);
         // usleep(1000000);
     }
 
@@ -566,8 +576,8 @@ int main(int argc, char *argv[])
     for(i=0;i<sweep_meta.sweep_count;i++){
         printf("sweep_start=%lu\n", sweep_meta.sweep[i].start_sweep);
         printf("sweep_stop=%lu\n", sweep_meta.sweep[i].stop_sweep);
-        printf("sweep_count=%d\n", sweep_meta.sweep[i].step_count);
-        printf("sweep_duration=%lu\n", sweep_meta.sweep[i].step_duration);
+        printf("step_count=%d\n", sweep_meta.sweep[i].step_count);
+        printf("step_duration=%lu\n", sweep_meta.sweep[i].step_duration);
     }
 
     
