@@ -53,6 +53,29 @@
 #define DWELL_TIME (100000)
 #define LINE_LENGTH 256
 
+typedef struct frequency_sweep{
+    bladerf_frequency start_sweep;
+    bladerf_frequency stop_sweep;
+    int step_count;
+    int intersection;
+    bladerf_timestamp step_duration;
+    struct bladerf_quick_tune* quick_tunes;
+} frequency_sweep;
+
+typedef struct sweep_metadata{
+    bladerf_direction dir;
+    int sweep_format;
+    frequency_sweep* sweep;
+    int sweep_count;
+    int quick_tune_count;
+    bladerf_timestamp sweep_start_time;
+    bladerf_timestamp sweep_period;
+    bladerf_timestamp next_timestamp;
+    int current_iter;
+    int current_sweep;
+    int current_step;
+} sweep_metadata;
+
 bool is_running = true;
 struct devcfg config;
 
@@ -101,7 +124,7 @@ int read_csv(char* filename, sweep_metadata* sweeps_meta){
     char* result;
     int i=0;
     
-    sweeps_meta->sweep_count=countlines(filename);
+    sweeps_meta->sweep_count=countlines(filename)-1;
     if(sweeps_meta->sweep_count==0){
         printf("empty file\n");
         return -1;
@@ -114,9 +137,6 @@ int read_csv(char* filename, sweep_metadata* sweeps_meta){
     }
     sweeps_meta->sweep = sweeps;
 
-    token = strtok(row, ",");
-    sweeps_meta->sweep_format=atoi(token);
-    printf("format: %s\n", token);
 
     // token = strtok(NULL, ",");
     // sweeps[i].stop_sweep=atoi(token);
@@ -128,21 +148,33 @@ int read_csv(char* filename, sweep_metadata* sweeps_meta){
         free(sweeps);
         return -1;
     }
+
+    result=fgets(row, LINE_LENGTH, fp);
+    if(result==NULL) {
+        printf("Could not read row: \"%s\" %ld\n", row, (long int) result);
+        i--;
+        return -1;
+    }
+
+    token = strtok(row, ",");
+    sweeps_meta->sweep_format=atoi(token);
+    printf("format: %s\n", token);
+    
     while (feof(fp) != true)
     {
         result=fgets(row, LINE_LENGTH, fp);
         if(result==NULL) {
-            printf("Could not read row: %s %ld\n", row, (long int) result);
+            printf("Could not read row: \"%s\" %ld\n", row, (long int) result);
             i--;
             return -1;
         }
 
         token = strtok(row, ",");
-        sweeps[i].start_sweep=atoi(token);
+        sweeps[i].start_sweep=atol(token);
         printf("start: %s\n", token);
 
         token = strtok(NULL, ",");
-        sweeps[i].stop_sweep=atoi(token);
+        sweeps[i].stop_sweep=atol(token);
         printf("stop: %s\n", token);
 
         token = strtok(NULL, ",");
@@ -150,7 +182,7 @@ int read_csv(char* filename, sweep_metadata* sweeps_meta){
         printf("count: %s\n", token);
 
         token = strtok(NULL, ",");
-        sweeps[i].step_duration=atoi(token);
+        sweeps[i].step_duration=atol(token);
         printf("duration: %s\n", token);
         // while(token != NULL)
         // {
@@ -159,6 +191,7 @@ int read_csv(char* filename, sweep_metadata* sweeps_meta){
         // }
         i++;
     }
+    printf("\n");
 
     fclose(fp);
     return -1;
@@ -175,7 +208,6 @@ int run_test_retune_sender(struct bladerf *dev, sweep_metadata* sweep_meta)
     int i, j;
 
     memset(&meta, 0, sizeof(meta));
-    memset(&sweep_meta, 0, sizeof(sweep_meta));
 
     sweep_meta->dir = BLADERF_CHANNEL_IS_TX(BLADERF_CHANNEL_TX(0));
 
@@ -278,10 +310,19 @@ int run_test_retune_sender(struct bladerf *dev, sweep_metadata* sweep_meta)
             goto out;
         }
         printf("--------------------------------------tx\n\n");
+
+        // status = bladerf_schedule_retune(dev, BLADERF_CHANNEL_TX(0), meta.timestamp+sweep_meta->sweep_period, 0, &sweep_meta->sweep[sweep_meta->current_sweep].quick_tunes[sweep_meta->current_step]);
+        // // printf("%d. setting retune to %ld (%ld)\n", i, meta->timestamp, meta->timestamp/1000000);
+        // if (status != 0) {
+        //     fprintf(stderr, "Failed to apply quick tune: %s\n",
+        //             bladerf_strerror(status));
+        //     return status;
+        // }
+
         get_next_scan_timestamp(dev, sweep_meta);
         meta.timestamp = sweep_meta->next_timestamp;
 
-        // usleep(1000000);
+        usleep(1000000);
     }
 
 out:
@@ -302,7 +343,6 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
     bladerf_frequency frequency_step;
     int i, j;
     memset(&meta, 0, sizeof(meta));
-    memset(&sweep_meta, 0, sizeof(sweep_meta));
 
     sweep_meta->dir = BLADERF_CHANNEL_IS_TX(BLADERF_CHANNEL_RX(0));
 
@@ -332,6 +372,12 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
             channel_layout=BLADERF_RX_X2;
             break;
     }
+
+    status = bladerf_set_rx_mode(dev, 1024, 1024, sweep_meta->sweep_format);
+    if(status!=0){
+        printf("error while setting rx mode %d\n", status);
+    }
+
     status = devcfg_perform_sync_config(dev, channel_layout,
                                         BLADERF_FORMAT_SC16_Q11_META,
                                         &config, true);
@@ -340,6 +386,8 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
         return -1;
     }
 
+
+    
     sweep_meta->quick_tune_count=0;
     sweep_meta->sweep_period=0;
     for(j=0;j<sweep_meta->sweep_count;j++){
@@ -419,6 +467,15 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
             goto out;
         }
         printf("--------------------------------------tx\n\n");
+
+        status = bladerf_schedule_retune(dev, BLADERF_CHANNEL_RX(0), meta.timestamp+sweep_meta->sweep_period, 0, &sweep_meta->sweep[sweep_meta->current_sweep].quick_tunes[sweep_meta->current_step]);
+        // printf("%d. setting retune to %ld (%ld)\n", i, meta->timestamp, meta->timestamp/1000000);
+        if (status != 0) {
+            fprintf(stderr, "Failed to apply quick tune: %s\n",
+                    bladerf_strerror(status));
+            return status;
+        }
+
         get_next_scan_timestamp(dev, sweep_meta);
         meta.timestamp = sweep_meta->next_timestamp;
 
@@ -447,10 +504,10 @@ int main(int argc, char *argv[])
     status = read_csv("deneme.csv", &sweep_meta);
     printf("sweep_count=%d\n", sweep_meta.sweep_count);
     for(i=0;i<sweep_meta.sweep_count;i++){
-        printf("sweep_start=%d\n", sweep_meta.sweep[i].start_sweep);
-        printf("sweep_stop=%d\n", sweep_meta.sweep[i].stop_sweep);
-        printf("sweep_count=%d\n", sweep_meta.sweep[i].step_count);
-        printf("sweep_duration=%ld\n", sweep_meta.sweep[i].step_duration);
+        printf("sweep_start=%lu\n", sweep_meta.sweep[i].start_sweep);
+        printf("sweep_stop=%lu\n", sweep_meta.sweep[i].stop_sweep);
+        printf("step_count=%d\n", sweep_meta.sweep[i].step_count);
+        printf("step_duration=%lu\n", sweep_meta.sweep[i].step_duration);
     }
 
     
@@ -460,7 +517,11 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Unable to catch SIGINT signals\n");
     }
 
+
+
     bladerf_log_set_verbosity(VERBOSITY);
+
+
 
     status = bladerf_open(&dev, devstr);
     if (status != 0) {
@@ -468,6 +529,7 @@ int main(int argc, char *argv[])
                 bladerf_strerror(status));
         return status;
     }
+
 
     devcfg_init(&config);
     config.rx_samplerate = SAMPLE_RATE;
@@ -483,6 +545,8 @@ int main(int argc, char *argv[])
         bladerf_close(dev);
         return -1;
     }
+
+
 
     status = run_test_retune_receiver(dev, &sweep_meta);
     if (status != 0) {
@@ -500,6 +564,7 @@ int main(int argc, char *argv[])
     //     // return -1;
     // }    
 
+
     status = bladerf_enable_module(dev, BLADERF_RX_X1, false);
     if (status != 0) {
         fprintf(stderr, "Failed to status RX module: %s\n",
@@ -507,6 +572,7 @@ int main(int argc, char *argv[])
         bladerf_close(dev);
         return -1;
     }    
+
 
 
     status = bladerf_enable_module(dev, BLADERF_TX_X1, false);
