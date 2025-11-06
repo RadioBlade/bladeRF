@@ -532,7 +532,7 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
     meta.timestamp = sweep_meta->next_timestamp;
     while(1) {
         printf("sync rx------------------------\n");
-        status = bladerf_sync_rx(dev, samples, BUF_LEN, &meta, TIMEOUT_MS);
+        status = bladerf_sync_rx(dev, samples, 1024, &meta, TIMEOUT_MS);
         if (status != 0) {
             fprintf(stderr, "Failed to RX data: %s\n",
                     bladerf_strerror(status));
