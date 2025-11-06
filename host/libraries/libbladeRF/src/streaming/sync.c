@@ -247,7 +247,6 @@ int sync_init(struct bladerf_sync *sync,
     } else{
         sync->meta.samples_per_ts = samples_per_ts_configurable;
     }
-
     log_verbose("%s: Buffer size (in bytes): %u\n",
                 __FUNCTION__, buffer_size * bytes_per_sample);
 
