@@ -500,9 +500,9 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
     }
 
         printf("%s %d\n", __FUNCTION__, __LINE__);
-    if (num_samples % s->meta.samples_per_ts != 0) {
         printf("%s: %u samples %% %u channels != 0\n",
                   __FUNCTION__, num_samples, s->meta.samples_per_ts);
+    if (num_samples % s->meta.samples_per_ts != 0) {
         log_debug("%s: %u samples %% %u channels != 0\n",
                   __FUNCTION__, num_samples, s->meta.samples_per_ts);
         return BLADERF_ERR_INVAL;
