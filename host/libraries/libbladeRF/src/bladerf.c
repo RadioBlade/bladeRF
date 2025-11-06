@@ -80,7 +80,7 @@
     } while (0)
 
 
-unsigned int samples_per_ts_configurable;
+unsigned int samples_per_ts_configurable=0;
 /******************************************************************************/
 /* Private Function Declarations */
 /******************************************************************************/
@@ -981,7 +981,7 @@ int bladerf_set_rx_mode(struct bladerf *dev,
     }
 
     printf("inside bladerf_set_rx_mode %d samples_per_ts_configurable\n",samples_per_ts_configurable);
-    
+
 
     /* Retrieve the request */
     status = usb->fn->bulk_transfer(usb->driver, PERIPHERAL_EP_IN, buf,

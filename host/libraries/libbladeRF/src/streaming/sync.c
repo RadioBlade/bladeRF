@@ -242,10 +242,11 @@ int sync_init(struct bladerf_sync *sync,
     sync->meta.msg_size = msg_size;
     sync->meta.msg_per_buf = msg_per_buf(msg_size, buffer_size, bytes_per_sample);
     sync->meta.samples_per_msg = samples_per_msg(msg_size, bytes_per_sample);
-    // sync->meta.samples_per_ts = (layout == BLADERF_RX_X2 || layout == BLADERF_TX_X2) ? 2:2;
-    sync->meta.samples_per_ts = samples_per_ts_configurable;
-
-    printf("inside sync_init %d samples_per_ts_configurable\n",samples_per_ts_configurable);
+    if(samples_per_ts_configurable==0){
+        sync->meta.samples_per_ts = (layout == BLADERF_RX_X2 || layout == BLADERF_TX_X2) ? 2:1;
+    } else{
+        sync->meta.samples_per_ts = samples_per_ts_configurable;
+    }
 
     log_verbose("%s: Buffer size (in bytes): %u\n",
                 __FUNCTION__, buffer_size * bytes_per_sample);
@@ -482,7 +483,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
             struct bladerf_metadata *user_meta, unsigned int timeout_ms)
 {
     struct buffer_mgmt *b;
-        printf("%s %d\n", __FUNCTION__, __LINE__);
 
     int status = 0;
     bool exit_early = false;
@@ -502,9 +502,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
         return BLADERF_ERR_INVAL;
     }
 
-        printf("%s %d\n", __FUNCTION__, __LINE__);
-        printf("%s: %u samples %% %u channels != 0\n",
-                  __FUNCTION__, num_samples, s->meta.samples_per_ts);
     if (num_samples % s->meta.samples_per_ts != 0) {
         log_debug("%s: %u samples %% %u channels != 0\n",
                   __FUNCTION__, num_samples, s->meta.samples_per_ts);
@@ -515,7 +512,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
     }
 
 
-        printf("%s %d\n", __FUNCTION__, __LINE__);
 
     MUTEX_LOCK(&s->lock);
 
@@ -532,12 +528,10 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
         }
     }
 
-        printf("%s %d\n", __FUNCTION__, __LINE__);
     b = &s->buf_mgmt;
     samples_per_buffer = s->stream_config.samples_per_buffer;
 
     log_verbose("%s: Requests %u samples.\n", __FUNCTION__, num_samples);
-        printf("%s %d\n", __FUNCTION__, __LINE__);
 
     while (!exit_early && samples_returned < num_samples && status == 0) {
         dump_buf_states(s);
@@ -548,7 +542,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                 sync_worker_state worker_state =
                     sync_worker_get_state(s->worker, &stream_error);
 
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                 /* Propagate stream error back to the caller.
                  * They can call this function again to restart the stream and
                  * try again.
@@ -569,7 +562,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                     }
                 }
 
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                 break;
             }
 
@@ -579,7 +571,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                  * transfers, so the consumer index must be reset to 0 */
                 b->cons_i = 0;
                 MUTEX_UNLOCK(&b->lock);
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                 log_debug("%s: Reset buf_mgmt consumer index\n", __FUNCTION__);
                 s->state = SYNC_STATE_START_WORKER;
                 break;
@@ -597,7 +588,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                     s->state = SYNC_STATE_WAIT_FOR_BUFFER;
                     log_debug("%s: Worker is now running.\n", __FUNCTION__);
                 } else {
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                     log_debug("%s: Failed to start worker, (%d)\n",
                               __FUNCTION__, status);
                 }
@@ -617,7 +607,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                                              __FUNCTION__, b->cons_i);
 
                     if (status == 0) {
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                         if (b->status[b->cons_i] != SYNC_BUFFER_FULL) {
                             s->state = SYNC_STATE_CHECK_WORKER;
                         } else {
@@ -633,7 +622,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
 
             case SYNC_STATE_BUFFER_READY:
                 MUTEX_LOCK(&b->lock);
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                 b->status[b->cons_i] = SYNC_BUFFER_PARTIAL;
                 b->partial_off = 0;
 
@@ -642,7 +630,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                     case BLADERF_FORMAT_SC16_Q11_PACKED:
                     case BLADERF_FORMAT_SC8_Q7:
                         s->state = SYNC_STATE_USING_BUFFER;
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                         break;
 
                     case BLADERF_FORMAT_SC16_Q11_META:
@@ -658,7 +645,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
 
                     default:
                         assert(!"Invalid stream format");
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                         status = BLADERF_ERR_UNEXPECTED;
                 }
 
@@ -668,7 +654,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
             case SYNC_STATE_USING_BUFFER: /* SC16Q11 buffers w/o metadata */
                 MUTEX_LOCK(&b->lock);
 
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                 buf_src = (uint8_t*)b->buffers[b->cons_i];
 
                 samples_to_copy = uint_min(num_samples - samples_returned,
@@ -686,7 +671,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                         dest_ptr[zz+2] = (int16_t)((((uint16_t*)(meta_sample_ptr))[jj+2] & 0x000F) << 12) >> 4
                             | ((((uint16_t*)(meta_sample_ptr))[jj+1] & 0xFF00)) >> 8;
                         dest_ptr[zz+3] = (int16_t)((((uint16_t*)(meta_sample_ptr))[jj+2] & 0xFFF0)) >> 4;
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                     }
                 } else {
                     memcpy(samples_dest + samples2bytes(s, samples_returned),
@@ -695,7 +679,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                 }
 
                 b->partial_off += samples_to_copy;
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                 samples_returned += samples_to_copy;
 
                 log_verbose("%s: Provided %u samples to caller\n",
@@ -704,7 +687,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                 /* We've finished consuming this buffer and can start looking
                  * for available samples in the next buffer */
                 if (b->partial_off >= samples_per_buffer) {
-        printf("%s %d\n", __FUNCTION__, __LINE__);
 
                     /* Check for symptom of out-of-bounds accesses */
                     assert(b->partial_off == samples_per_buffer);
@@ -727,7 +709,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
 
                         buf_src = (uint8_t*)b->buffers[b->cons_i];
 
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                         s->meta.curr_msg =
                             buf_src + s->meta.msg_size * s->meta.msg_num;
 
@@ -741,7 +722,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                            (BLADERF_META_FLAG_RX_HW_UNDERFLOW |
                               BLADERF_META_FLAG_RX_HW_MINIEXP1 |
                               BLADERF_META_FLAG_RX_HW_MINIEXP2);
-        printf("%s %d\n", __FUNCTION__, __LINE__);
 
                         s->meta.curr_msg_off = 0;
 
@@ -751,7 +731,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                             s->meta.msg_timestamp != s->meta.curr_timestamp) {
 
                             user_meta->status |= BLADERF_META_STATUS_OVERRUN;
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                             exit_early = true;
                             log_debug("Sample discontinuity detected @ "
                                       "buffer %u, message %u: Expected t=%llu, "
@@ -786,7 +765,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                                       (unsigned long long)user_meta->timestamp);
 
                             status = BLADERF_ERR_TIME_PAST;
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                         } else if ((user_meta->flags & BLADERF_META_FLAG_RX_NOW) ||
                                    target_timestamp == s->meta.curr_timestamp) {
 
@@ -804,7 +782,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
 
                             samples_returned += samples_to_copy;
                             s->meta.curr_msg_off += samples_to_copy;
-        printf("%s %d\n", __FUNCTION__, __LINE__);
 
                             if (!copied_data &&
                                 (user_meta->flags & BLADERF_META_FLAG_RX_NOW)) {
@@ -849,7 +826,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                             uint64_t left_in_buffer =
                                 (uint64_t) s->meta.samples_per_msg *
                                     (s->meta.msg_per_buf - s->meta.msg_num);
-        printf("%s %d\n", __FUNCTION__, __LINE__);
 
                             /* Account for current position in buffer */
                             left_in_buffer -= s->meta.curr_msg_off;
@@ -869,7 +845,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
 
                                 s->meta.curr_msg_off += (size_t)samples_left;
                                 s->meta.curr_timestamp += time_delta;
-        printf("%s %d\n", __FUNCTION__, __LINE__);
 
                                 log_verbose("%s: Seeking within message (t=%llu)\n",
                                             __FUNCTION__,
@@ -878,7 +853,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                                 s->meta.state = SYNC_META_STATE_HEADER;
                                 s->meta.msg_num += timestamp_to_msg(s, samples_left);
 
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                                 log_verbose("%s: Seeking to message %u.\n",
                                             __FUNCTION__, s->meta.msg_num);
                             }
@@ -891,7 +865,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
                 }
 
                 MUTEX_UNLOCK(&b->lock);
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                 break;
 
             case SYNC_STATE_USING_PACKET_META: /* Packet buffers w/ metadata */
@@ -901,7 +874,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
 
                 user_meta->flags = metadata_get_packet_flags(buf_src);
                 user_meta->timestamp = metadata_get_timestamp(buf_src);
-        printf("%s %d\n", __FUNCTION__, __LINE__);
 
                 pkt_len_dwords = metadata_get_packet_len(buf_src);
                 if (pkt_len_dwords > 0) {
@@ -912,7 +884,6 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
 
                 advance_rx_buffer(b);
                 s->state = SYNC_STATE_WAIT_FOR_BUFFER;
-        printf("%s %d\n", __FUNCTION__, __LINE__);
                 MUTEX_UNLOCK(&b->lock);
                 break;
 
@@ -920,12 +891,10 @@ int sync_rx(struct bladerf_sync *s, void *samples, unsigned num_samples,
         }
     }
 
-        printf("%s %d\n", __FUNCTION__, __LINE__);
     if (user_meta && s->stream_config.format != BLADERF_FORMAT_PACKET_META) {
         user_meta->actual_count = samples_returned;
     }
 
-        printf("%s %d\n", __FUNCTION__, __LINE__);
 out:
     MUTEX_UNLOCK(&s->lock);
 
