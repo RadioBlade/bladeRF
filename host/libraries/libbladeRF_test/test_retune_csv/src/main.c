@@ -365,6 +365,15 @@ int run_test_retune_sender(struct bladerf *dev, sweep_metadata* sweep_meta)
             goto out;
         }
         printf("--------------------------------------tx\n\n");
+
+        status = bladerf_schedule_retune(dev, BLADERF_CHANNEL_TX(0), meta.timestamp+sweep_meta->sweep_period, 0, &sweep_meta->sweep[sweep_meta->current_sweep].quick_tunes[sweep_meta->current_step]);
+        // printf("%d. setting retune to %ld (%ld)\n", i, meta->timestamp, meta->timestamp/1000000);
+        if (status != 0) {
+            fprintf(stderr, "Failed to apply quick tune: %s\n",
+                    bladerf_strerror(status));
+            return status;
+        }
+
         get_next_scan_timestamp(dev, sweep_meta);
         meta.timestamp = sweep_meta->next_timestamp;
 
@@ -506,6 +515,15 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
             goto out;
         }
         printf("--------------------------------------tx\n\n");
+
+        status = bladerf_schedule_retune(dev, BLADERF_CHANNEL_RX(0), meta.timestamp+sweep_meta->sweep_period, 0, &sweep_meta->sweep[sweep_meta->current_sweep].quick_tunes[sweep_meta->current_step]);
+        // printf("%d. setting retune to %ld (%ld)\n", i, meta->timestamp, meta->timestamp/1000000);
+        if (status != 0) {
+            fprintf(stderr, "Failed to apply quick tune: %s\n",
+                    bladerf_strerror(status));
+            return status;
+        }
+
         get_next_scan_timestamp(dev, sweep_meta);
         meta.timestamp = sweep_meta->next_timestamp;
 
