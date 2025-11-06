@@ -54,8 +54,8 @@
 #define LINE_LENGTH 256
 
 typedef struct frequency_sweep{
-    int start_sweep;
-    int stop_sweep;
+    bladerf_frequency start_sweep;
+    bladerf_frequency stop_sweep;
     int step_count;
     int intersection;
     bladerf_timestamp step_duration;
@@ -124,7 +124,7 @@ int read_csv(char* filename, sweep_metadata* sweeps_meta){
     char* result;
     int i=0;
     
-    sweeps_meta->sweep_count=countlines(filename);
+    sweeps_meta->sweep_count=countlines(filename)-1;
     if(sweeps_meta->sweep_count==0){
         printf("empty file\n");
         return -1;
@@ -137,9 +137,6 @@ int read_csv(char* filename, sweep_metadata* sweeps_meta){
     }
     sweeps_meta->sweep = sweeps;
 
-    token = strtok(row, ",");
-    sweeps_meta->sweep_format=atoi(token);
-    printf("format: %s\n", token);
 
     // token = strtok(NULL, ",");
     // sweeps[i].stop_sweep=atoi(token);
@@ -151,21 +148,33 @@ int read_csv(char* filename, sweep_metadata* sweeps_meta){
         free(sweeps);
         return -1;
     }
+
+    result=fgets(row, LINE_LENGTH, fp);
+    if(result==NULL) {
+        printf("Could not read row: \"%s\" %ld\n", row, (long int) result);
+        i--;
+        return -1;
+    }
+
+    token = strtok(row, ",");
+    sweeps_meta->sweep_format=atoi(token);
+    printf("format: %s\n", token);
+    
     while (feof(fp) != true)
     {
         result=fgets(row, LINE_LENGTH, fp);
         if(result==NULL) {
-            printf("Could not read row: %s %ld\n", row, (long int) result);
+            printf("Could not read row: \"%s\" %ld\n", row, (long int) result);
             i--;
             return -1;
         }
 
         token = strtok(row, ",");
-        sweeps[i].start_sweep=atoi(token);
+        sweeps[i].start_sweep=atol(token);
         printf("start: %s\n", token);
 
         token = strtok(NULL, ",");
-        sweeps[i].stop_sweep=atoi(token);
+        sweeps[i].stop_sweep=atol(token);
         printf("stop: %s\n", token);
 
         token = strtok(NULL, ",");
@@ -173,7 +182,7 @@ int read_csv(char* filename, sweep_metadata* sweeps_meta){
         printf("count: %s\n", token);
 
         token = strtok(NULL, ",");
-        sweeps[i].step_duration=atoi(token);
+        sweeps[i].step_duration=atol(token);
         printf("duration: %s\n", token);
         // while(token != NULL)
         // {
@@ -182,6 +191,7 @@ int read_csv(char* filename, sweep_metadata* sweeps_meta){
         // }
         i++;
     }
+    printf("\n");
 
     fclose(fp);
     return -1;
@@ -524,10 +534,10 @@ int main(int argc, char *argv[])
     status = read_csv("deneme.csv", &sweep_meta);
     printf("sweep_count=%d\n", sweep_meta.sweep_count);
     for(i=0;i<sweep_meta.sweep_count;i++){
-        printf("sweep_start=%d\n", sweep_meta.sweep[i].start_sweep);
-        printf("sweep_stop=%d\n", sweep_meta.sweep[i].stop_sweep);
+        printf("sweep_start=%lu\n", sweep_meta.sweep[i].start_sweep);
+        printf("sweep_stop=%lu\n", sweep_meta.sweep[i].stop_sweep);
         printf("sweep_count=%d\n", sweep_meta.sweep[i].step_count);
-        printf("sweep_duration=%ld\n", sweep_meta.sweep[i].step_duration);
+        printf("sweep_duration=%lu\n", sweep_meta.sweep[i].step_duration);
     }
 
     
