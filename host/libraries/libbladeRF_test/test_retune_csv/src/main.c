@@ -446,6 +446,11 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
         return -1;
     }
 
+    status = bladerf_set_rx_mode(dev, 1024, 1024, sweep_meta->sweep_format);
+    if(status!=0){
+        printf("error while setting rx mode %d\n", status);
+    }
+
     printf("%s %d\n", __FUNCTION__, __LINE__);
     
     sweep_meta->quick_tune_count=0;
