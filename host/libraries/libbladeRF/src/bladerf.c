@@ -80,7 +80,7 @@
     } while (0)
 
 
-unsigned int samples_per_ts_configurable;
+unsigned int samples_per_ts_configurable=0;
 /******************************************************************************/
 /* Private Function Declarations */
 /******************************************************************************/

@@ -242,8 +242,11 @@ int sync_init(struct bladerf_sync *sync,
     sync->meta.msg_size = msg_size;
     sync->meta.msg_per_buf = msg_per_buf(msg_size, buffer_size, bytes_per_sample);
     sync->meta.samples_per_msg = samples_per_msg(msg_size, bytes_per_sample);
-    // sync->meta.samples_per_ts = (layout == BLADERF_RX_X2 || layout == BLADERF_TX_X2) ? 2:2;
-    sync->meta.samples_per_ts = samples_per_ts_configurable;
+    if(samples_per_ts_configurable==0){
+        sync->meta.samples_per_ts = (layout == BLADERF_RX_X2 || layout == BLADERF_TX_X2) ? 2:1;
+    } else{
+        sync->meta.samples_per_ts = samples_per_ts_configurable;
+    }
     log_verbose("%s: Buffer size (in bytes): %u\n",
                 __FUNCTION__, buffer_size * bytes_per_sample);
 
