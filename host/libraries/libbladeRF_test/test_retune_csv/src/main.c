@@ -494,7 +494,7 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
     meta.timestamp = sweep_meta->sweep_start_time + sweep_meta->sweep[0].step_duration; //TODO: Should assign a valid and smallest possible delay
     for( i=0; i<sweep_meta->sweep_count; i++){
         for( j=0; j<sweep_meta->sweep[i].step_count; j++){
-            status = bladerf_schedule_retune(dev, BLADERF_CHANNEL_RX(0), meta.timestamp+i*sweep_meta->sweep_period, 0, &sweep_meta->sweep[i].quick_tunes[j]);
+            status = bladerf_schedule_retune(dev, BLADERF_CHANNEL_RX(0), meta.timestamp, 0, &sweep_meta->sweep[i].quick_tunes[j]);
             // printf("%d. setting retune to %ld (%ld)\n", i, meta->timestamp, meta->timestamp/1000000);
             if (status != 0) {
                 fprintf(stderr, "Failed to apply quick tune: %s\n",
@@ -513,6 +513,8 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
 
     meta.timestamp = sweep_meta->next_timestamp;
     while(1) {
+    	get_next_scan_timestamp(dev, sweep_meta);
+    	meta.timestamp = sweep_meta->next_timestamp;
         printf("sync rx------------------------\n");
         status = bladerf_sync_rx(dev, samples, BUF_LEN, &meta, TIMEOUT_MS);
         if (status != 0) {
@@ -528,10 +530,7 @@ int run_test_retune_receiver(struct bladerf *dev, sweep_metadata* sweep_meta)
             fprintf(stderr, "Failed to apply quick tune: %s\n",
                     bladerf_strerror(status));
             return status;
-        }
-
-        get_next_scan_timestamp(dev, sweep_meta);
-        meta.timestamp = sweep_meta->next_timestamp;
+        }        
 
         // usleep(1000000);
     }
